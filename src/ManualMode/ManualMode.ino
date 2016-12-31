@@ -5,12 +5,23 @@
 #include <MeOrion.h>
 
 MeDCMotor dc;
-MeInfraredReceiver irP6;
-
-uint8_t irRead = 0;
+MeInfraredReceiver irP6(6);
+MeUltrasonicSensor usP3(3);
 
 int minSpeed = 45;
 int moveSpeed = 150;
+int randnum = 0;
+bool manual = true;
+bool leftFlag = false;
+bool rightFlag = false;
+double distance;
+
+void forward();
+void backward();
+void turnLeft();
+void turnRight();
+void halt();
+void buzz();
 
 void forward()
 {
@@ -25,7 +36,23 @@ void backward()
   dc.reset(M1);
   dc.run(moveSpeed);
   dc.reset(M2);
+  dc.run(-moveSpeed);
+}
+
+void backwardLeft()
+{
+  dc.reset(M1);
+  dc.run(moveSpeed/2);
+  dc.reset(M2);
+  dc.run(-moveSpeed);
+}
+
+void backwardRight()
+{
+  dc.reset(M1);
   dc.run(moveSpeed);
+  dc.reset(M2);
+  dc.run(-moveSpeed/2);
 }
 
 void turnLeft()
@@ -52,11 +79,38 @@ void halt()
   dc.run(0);
 }
 
-void irProcess()
+void buzz()
+{
+  buzzerOn();
+  delay(100);
+  buzzerOff();
+}
+
+void setup() {
+  pinMode(13,OUTPUT);
+  digitalWrite(13,HIGH);
+  delay(300);
+  digitalWrite(13,LOW);
+  Serial.begin(115200);
+  //
+  delay(500);
+  buzzerOn();
+  delay(100);
+  buzzerOff();
+  delay(500);
+  //
+  irP6.begin();
+}
+
+uint8_t irCode()
 {
   irP6.loop();
-  irRead = irP6.getCode();
-  switch(irRead)
+  return irP6.getCode();
+}
+
+void manualLoop()
+{
+  switch(irCode())
   {
     case IR_BUTTON_PLUS:
       forward();
@@ -64,18 +118,14 @@ void irProcess()
     case IR_BUTTON_MINUS:
       backward();
       break;
-    case IR_BUTTON_PREVIOUS: // Left
+    case IR_BUTTON_PREVIOUS:
       turnLeft();
       break;
     case IR_BUTTON_NEXT:
       turnRight();
       break;
-    case IR_BUTTON_TEST: // D
-      halt();
-      while (irP6.buttonState() != 0)
-      {
-        irP6.loop();
-      }
+    case IR_BUTTON_A:
+      manual = false;
       break;
     default:
       halt();
@@ -83,11 +133,64 @@ void irProcess()
   }
 }
 
-
-void setup() {
-  irP6.begin();
+void autonomousLoop()
+{
+  switch(irCode())
+  {
+    case IR_BUTTON_C:
+      manual = true;
+      halt();
+      break;
+  }
+  distance = usP3.distanceCm();
+  randomSeed(analogRead(A4));
+  if((distance > 10) && (distance < 40))
+  {
+    randnum = random(300);
+    if ((randnum > 190) && (!rightFlag))
+    {
+      leftFlag = true;
+      turnLeft();
+    }
+    else
+    {
+      rightFlag = true;
+      turnRight();
+    }
+  }
+  else if (distance < 10)
+  {
+    randnum=random(300);
+    if(randnum > 190)
+    {
+      backwardLeft();
+    }
+    else
+    {
+      backwardRight();
+    }
+  }
+  else
+  {
+    leftFlag = false;
+    rightFlag = false;
+    forward();
+  }
 }
 
 void loop() {
-  irProcess();
+  if (manual)
+  {
+    manualLoop();
+  }
+  else
+  {
+    autonomousLoop();
+  }
 }
+
+void _loop()
+{
+  irP6.loop();
+}
+
