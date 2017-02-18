@@ -4,7 +4,7 @@
 // Usage:
 //   A: start the robot
 //   C: stop the robot
-//   UP: increade the turn delay by 0.1 seconds
+//   UP: increase the turn delay by 0.1 seconds
 //   DOWN: decrease the turn delay by 0.1 seconds
 //   B: reset the turn delay to the default
 //
